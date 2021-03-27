@@ -22,11 +22,19 @@ void xsort (int *input, int count) {
     printArray(input,count);
     // Marcin Ciura, A102549 - sequence of increments for shell sort algorithm.
     // 1, 4, 10, 23, 57, 132, 301, 701, 1750
-    //int const distArr[] = {1750, 701, 301, 132, 57, 23, 10, 4, 1};
-    int const distArr[] = {10, 4, 1};
+    int const distArr[] = {1750, 701, 301, 132, 57, 23, 10, 4, 1};
+    //int const distArr[] = {10, 4, 1};
     int distSize = sizeof(distArr)/sizeof(distArr[0]);
 
-    for (int n = 0; n < distSize; n++)
+    // Detect starting distanse as distArr[].max less, than 1/2 incomming input array length
+    int start = 0;
+    for (start = 0; start < distSize; start++)
+    {
+        if (distArr[start] < count/2) break;
+    }
+    printf("Start is %d, %d \n", start, distArr[start]);
+
+    for (int n = start; n < distSize; n++)
     {
         int d = distArr[n];
         printf("New distance is %d \n", d);
