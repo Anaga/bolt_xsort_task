@@ -26,10 +26,10 @@ void printArray(int *input, int count) {
     printf("\n");
 }
 
-void printArrayInHex(int *input, int count) {
+void printArrayInHex(int *input, int startPos, int count) {
     if (input != NULL)
     {
-        for(int i=0; i<count; i++) printf("%04X ", input[i]);
+        for(int i=0; i<count; i++) printf("%04X ", input[i+startPos]);
     }
     printf("\n");
 }
@@ -45,60 +45,60 @@ int getNibbleByPos(int number, unsigned short int pos){
 typedef struct NibbleBuckets{
     int count;
     int startPos;
-    int endPos;
 } NibbleBucket;
 
-#define BUCKETS_COUNT 16
-// Global 16 buckets for nibles from 0 till F
- NibbleBucket bucketsArr[BUCKETS_COUNT];
+#define DIGIT_COUNT 16
+#define ROWS_COUNT 4
+// Global 16*4 buckets for niblles from 0 till F,  16 for one digit, 4 for all 4 digits,
+NibbleBucket bucketsArr[DIGIT_COUNT][ROWS_COUNT];
 
-void initAllBucket(int startPos){
-    for (int i = 0; i < BUCKETS_COUNT; i++)
+void initOneRowBucket(int startPos, int rowPos){
+    for (int i = 0; i < DIGIT_COUNT; i++)
     {
-        bucketsArr[i].count = 0;
-        bucketsArr[i].startPos = startPos;
-        bucketsArr[i].endPos = startPos;
+        bucketsArr[i][rowPos].count = 0;
+        bucketsArr[i][rowPos].startPos = startPos;
     }
 }
 
 void printAllBucket(){
-    for (int i = 0; i < BUCKETS_COUNT; i++)
+    for (int r = 0; r < ROWS_COUNT; r++)
     {
-        printf("'%X' bucket, from %d till %d, count %d\n", i, bucketsArr[i].startPos, bucketsArr[i].endPos, bucketsArr[i].count);
+        for (int i = 0; i < DIGIT_COUNT; i++)
+        {
+            printf("[%d][%X] bucket, count %d, start pos %d\n", r, i, bucketsArr[i][r].count, bucketsArr[i][r].startPos);
+        }
     }
 }
 
-void nibblesCounting(int *input, int start, int end, int nibblePos){
-    for(int i=start; i<end; i++)
+void nibblesCounting(int *input, int start, int count, int nibblePos){
+    for(int i=start; i<count+start; i++)
     {
         int bucketNumber = getNibbleByPos(input[i], nibblePos);
-        bucketsArr[bucketNumber].count++;
+        bucketsArr[bucketNumber][nibblePos].count++;
     }
 
-    bucketsArr[0].endPos = bucketsArr[0].count;
-    for (int i = 1; i < BUCKETS_COUNT; i++)
+    for (int i = 1; i < DIGIT_COUNT; i++)
     {
-        bucketsArr[i].startPos = bucketsArr[i-1].endPos;
-        bucketsArr[i].endPos = bucketsArr[i].startPos + bucketsArr[i].count;
+        bucketsArr[i][nibblePos].startPos = bucketsArr[i-1][nibblePos].startPos + bucketsArr[i-1][nibblePos].count;
     }
 }
 
 void oneDigitSort(int *input, int count, int startPos, int nibblePos){
-
-    initAllBucket(startPos);
-
+    //printf("oneDigitSort, startPos %d, count %d, nibblePos %d \n",startPos, count, nibblePos);
+    initOneRowBucket(startPos, nibblePos);
     nibblesCounting(input, startPos, count, nibblePos);
-    printAllBucket();
+    //printAllBucket();
     NibbleBucket curBucket;
-    for (int i = startPos; i < count; i++)
+    for (int i = startPos; i < count+startPos; i++)
     {
         boolean elementInPlase = FALSE;
+        //printf("oneDigitSort, i=%d \n", i);
         while (FALSE == elementInPlase )
         {
             int nib = getNibbleByPos(input[i], nibblePos);
-            curBucket = bucketsArr[nib];
+            curBucket = bucketsArr[nib][nibblePos];
 
-            if ((i>=curBucket.startPos) && (i<=curBucket.endPos))
+            if ((i>=curBucket.startPos) && (i<= (curBucket.startPos+curBucket.count) ))
             {
                 // element [i] already in please;
                 elementInPlase = TRUE;
@@ -113,18 +113,22 @@ void oneDigitSort(int *input, int count, int startPos, int nibblePos){
 
             // ready to swap!
             // Element from [i] to [indexToPost]
-            printf("Bucket %X, \t swap A[%d](%04X) to A[%d](%04X)\n", nib, i, input[i], indexToPost, input[indexToPost]);
+            //printf("Bucket %X, \t swap A[%d](%04X) to A[%d](%04X)\n", nib, i, input[i], indexToPost, input[indexToPost]);
             swap(&input[i], &input[indexToPost]);
         }
     }
-    printf("\n");
-    printArrayInHex(input, count);
+    //printf("\n");
+    //printArrayInHex(input, startPos, count);
 }
 
 
 void flagSort(int *input, int count){
-    printf("American flag sort\n");
-    printArrayInHex(input, count);
+    printf("American flag sort, input:\n");
+    printArrayInHex(input, 0, count);
+    for (int i = 0; i < ROWS_COUNT; i++)
+    {
+        initOneRowBucket(0, i);
+    }
 
     int nibblePos = 3;
     //while (nibblePos>0)
@@ -133,17 +137,32 @@ void flagSort(int *input, int count){
 
         // sort next nible:
         nibblePos = 2;
-        for (int i = 0; i < BUCKETS_COUNT; i++)
+        for (int i = 0; i < DIGIT_COUNT; i++)
         {
-            NibbleBucket curBucket = bucketsArr[i];
-            if (curBucket.count <= 1)
-            {
-                // no point to sort one element
-                continue;
-            }
+            NibbleBucket curBucket = bucketsArr[i][nibblePos+1];
+            if (curBucket.count <= 1)  continue;
             oneDigitSort(input, curBucket.count, curBucket.startPos, nibblePos);
+            // sort next nible:
+            nibblePos = 1;
+            for (int j = 0; j < DIGIT_COUNT; j++)
+            {
+                NibbleBucket curBucket = bucketsArr[j][nibblePos+1];
+                if (curBucket.count <= 1) continue;
+                oneDigitSort(input, curBucket.count, curBucket.startPos, nibblePos);
+                // sort next nible:
+                nibblePos = 0;
+                for (int k = 0; k < DIGIT_COUNT; k++)
+                {
+                    NibbleBucket curBucket = bucketsArr[k][nibblePos+1];
+                    if (curBucket.count <= 1) continue;
+                    oneDigitSort(input, curBucket.count, curBucket.startPos, nibblePos);
+                }
+            }
         }
     }
+    printf("American flag sort, output:\n");
+    printArrayInHex(input, 0, count);
+
 }
 
 
@@ -213,7 +232,7 @@ int main () {
 
     printf("values:");
     printArray(values,5);
-    printArrayInHex(values, 5);
+    printArrayInHex(values, 0, 5);
 
     printf("Hex view of hexArray:");
     ssize_t hexArraySize = sizeof(hexArray)/sizeof(hexArray[0]);
@@ -244,11 +263,11 @@ int main () {
     printArray(pArrayToTest,arraySize);
 
     printf("Input numbers are: \n");
-    printArrayInHex(array,arraySize);
+    printArrayInHex(array, 0, arraySize);
     printf("Print out numbers in ascending order:\n");
     flagSort(array, arraySize);
 
-    /*
+
     printf("Input numbers are: \n");
     printArray(values,5);
     printf("Print out numbers in ascending order:\n");
@@ -268,6 +287,6 @@ int main () {
 
     free(pOrigArray);
     free(pArrayToTest);
-    */
+
     return(0);
 }
